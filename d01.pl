@@ -1,7 +1,11 @@
 #! /usr/bin/env perl
-use 5.016;
-use warnings;
-use autodie;
+# Advent of Code 2018 Day 1 - complete solution
+# Problem link: http://adventofcode.com/2018/day/1
+#   Discussion: http://gerikson.com/blog/comp/Advent-of-Code-2018.html#d01
+#      License: http://gerikson.com/files/AoC2018/UNLICENSE
+###########################################################
+
+use Modern::Perl '2015';
 # useful modules
 use List::Util qw/sum/;
 use Data::Dumper;
@@ -14,3 +18,4 @@ open( my $fh, '<', "$file" );
 while (<$fh>) { chomp; s/\r//gm; push @input, $_; }
 
 ### CODE
+say "hi!";
