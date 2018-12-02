@@ -1,5 +1,5 @@
 #! /usr/bin/env perl
-# Advent of Code 2018 Day 1: Chronal Calibration - complete solution
+# Advent of Code 2018 Day 1 - Chronal Calibration - complete solution
 # Problem link: http://adventofcode.com/2018/day/1
 #   Discussion: http://gerikson.com/blog/comp/Advent-of-Code-2018.html#d01
 #      License: http://gerikson.com/files/AoC2018/UNLICENSE
