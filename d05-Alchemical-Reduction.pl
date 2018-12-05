@@ -56,7 +56,7 @@ my $min = length( $input[0] );
 foreach my $c ( 'a' .. 'z' ) {
     my $u         = uc $c;
     my $shortened = $input[0];
-    $shortened =~ s/[$c,$u]//xg;
+    $shortened =~ s/[$c,$u]//g;
     if ( $min > reduce($shortened) ) {
         $min = reduce($shortened);
     }
