@@ -1,5 +1,5 @@
 #! /usr/bin/env perl
-# Advent of Code 2018 Day 25.pl - Four-Dimensional Adventure - complete solution
+# Advent of Code 2018 Day 25 - Four-Dimensional Adventure - complete solution
 # Problem link: http://adventofcode.com/2018/day/25.pl
 #   Discussion: http://gerikson.com/blog/comp/Advent-of-Code-2018.html#d25
 #      License: http://gerikson.com/files/AoC2018/UNLICENSE
