@@ -4,14 +4,17 @@
 #   Discussion: http://gerikson.com/blog/comp/Advent-of-Code-2018.html#d22
 #      License: http://gerikson.com/files/AoC2018/UNLICENSE
 ###########################################################
-
 use Modern::Perl '2015';
 
 # useful modules
-use List::Util qw/sum/;
-use Data::Dumper;
-
+use List::Util qw/sum min/;
+use Data::Dump qw/dump/;
+use Test::More tests=>2;
 use List::Util qw/all/;
+use Time::HiRes qw/gettimeofday tv_interval/;
+use Array::Heap::PriorityQueue::Numeric;
+
+my $start_time = [gettimeofday];
 
 #### INIT - load input data from file into array
 my $testing = 0;
@@ -36,8 +39,12 @@ for my $x ( 0 .. $x_t ) {
         $risk += calculate_type( $x, $y )->{type};
     }
 }
-
-say "Part 1: $risk";
+if ( $testing ) {
+    is($risk, 114, "Part 1: $risk")
+    # nop
+} else {
+    is( $risk, 10115, "Part 1: $risk")
+}
 
 # find the fastest path using Djikstra's
 
@@ -51,23 +58,22 @@ say "Part 1: $risk";
 # W . X .
 # N . . X
 
-#my @allowed_tools = ( [1,2], [0,2], [0,1]);
 my %allowed_states = (
     0 => { 1 => 1, 2 => 1 },
     1 => { 0 => 1, 2 => 1 },
     2 => { 0 => 1, 1 => 1 }
 );
 
-my $infinity = 'inf';
-my @node;
 my $root = '0,0,1';    # start with torch
+my $bignum = 999999;
+# search outside thebox above my ( $x_limit, $y_limit );
 
-# search outside the box above
 my $x_limit = 3 * $x_t;
-my $y_limit = $y_t + 3 * $x_t;
+my $y_limit = $y_t + $x_limit;
 
-for ( my $x = 0 ; $x <= $x_limit ; $x++ ) {
-    for ( my $y = 0 ; $y <= $y_limit ; $y++ ) {
+my @node;
+for ( my $x = 0; $x <= $x_limit; $x++ ) {
+    for ( my $y = 0; $y <= $y_limit; $y++ ) {
         my $type = calculate_type( $x, $y )->{type};
         foreach my $tool ( keys %{ $allowed_states{$type} } ) {
             push @node, join( ',', $x, $y, $tool );
@@ -75,16 +81,14 @@ for ( my $x = 0 ; $x <= $x_limit ; $x++ ) {
     }
 }
 
-my @unsolved = @node;
-my @solved;
-
 my %dist;
 my %edge;
 my %prev;
+say "==> calculating vertices...";
 
 # calculate vertices
-for ( my $x = 0 ; $x <= $x_limit ; $x++ ) {
-    for ( my $y = 0 ; $y <= $y_limit ; $y++ ) {
+for ( my $x = 0; $x <= $x_limit; $x++ ) {
+    for ( my $y = 0; $y <= $y_limit; $y++ ) {
         my $type = calculate_type( $x, $y )->{type};
 
         # what states are legal for this type?
@@ -92,14 +96,14 @@ for ( my $x = 0 ; $x <= $x_limit ; $x++ ) {
 
         # cost for switching tools
         $edge{ join( ',', $x, $y, $tools[0] ) }
-          ->{ join( ',', $x, $y, $tools[1] ) } = 7;
+           ->{ join( ',', $x, $y, $tools[1] ) } = 7;
         $edge{ join( ',', $x, $y, $tools[1] ) }
-          ->{ join( ',', $x, $y, $tools[0] ) } = 7;
+            ->{ join( ',', $x, $y, $tools[0] ) } = 7;
 
         # try to move
         for my $d ( [ -1, 0 ], [ 1, 0 ], [ 0, -1 ], [ 0, 1 ] ) {
             next
-              if ( $x + $d->[0] < 0
+                if ( $x + $d->[0] < 0
                 or $y + $d->[1] < 0
                 or $x + $d->[0] > $x_limit
                 or $y + $d->[1] > $y_limit );
@@ -110,42 +114,56 @@ for ( my $x = 0 ; $x <= $x_limit ; $x++ ) {
             # can we get to the next node using our currently equipped tool?
             foreach my $tool (@tools) {
                 $edge{ join( ',', $x, $y, $tool ) }
-                  ->{ join( ',', $x2, $y2, $tool ) } = 1
-                  if exists $allowed_states{$type2}->{$tool};
+                    ->{ join( ',', $x2, $y2, $tool ) } = 1
+                    if exists $allowed_states{$type2}->{$tool};
             }
 
         }
     }
 }
-
+my $pq = Array::Heap::PriorityQueue::Numeric->new();
+say "==> setting up queue...";
 foreach my $n (@node) {
-    $dist{$n} = $infinity;
-    $prev{$n} = $n;
+        $dist{$n} = $bignum;
+        $pq->add_unordered( $n, $bignum );
+        $prev{$n} = $n;
 }
+$pq->restore_order();
 $dist{$root} = 0;
 
-while (@unsolved) {
-    @unsolved = sort bydistance @unsolved;
-    my $n = shift @unsolved;
-    push @solved, $n;
-    foreach my $n2 ( keys %{ $edge{$n} } ) {
-        if (   ( $dist{$n2} eq $infinity )
-            || ( $dist{$n2} > ( $dist{$n} + $edge{$n}->{$n2} ) ) )
-        {
-            $dist{$n2} = $dist{$n} + $edge{$n}->{$n2};
-            $prev{$n2} = $n;
+say "==> starting loop...";
+LOOP:
+while ( $pq->peek ) {
+        my $n = $pq->get();
+
+        #    push @solved, $n;
+        foreach my $n2 ( keys %{ $edge{$n} } ) {
+            if ( $dist{$n2} > ( $dist{$n} + $edge{$n}->{$n2} )) {
+
+		$dist{$n2} = $dist{$n} + $edge{$n}->{$n2};
+		$prev{$n2} = $n;
+		$pq->add( $n2, $dist{$n} + $edge{$n}->{$n2} );
         }
     }
 }
-say "Part2: ", $dist{ join( ',', $x_t, $y_t, 1 ) };    # end in target with torch
+my $target = join( ',', $x_t, $y_t, 1 );
+my $part2 = $dist{$target};
 
-#### SUBS ####
-sub bydistance {
-        $dist{$a} eq $infinity ? +1
-      : $dist{$b} eq $infinity ? -1
-      :                          $dist{$a} <=> $dist{$b};
+if ($testing) {
+    is( $part2, 45, "Part 2: $part2" );
+}
+else {
+    is( $part2, 990, "Part 2: $part2" );
 }
 
+say sec_to_hms(tv_interval($start_time));
+
+#### SUBS ####
+sub sec_to_hms {
+    my ( $s ) = @_;
+    return sprintf("Duration: %02dh%02dm%02ds (%.3f ms)",
+	   int($s/(60*60)), ($s/60)%60, $s%60, $s*1000)
+}
 sub calculate_type {
     my ( $x, $y ) = @_;
 
