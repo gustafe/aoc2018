@@ -9,7 +9,7 @@ use Modern::Perl '2015';
 # useful modules
 use List::Util qw/sum min/;
 use Data::Dump qw/dump/;
-use Test::More tests=>2;
+use Test::More tests => 2;
 use List::Util qw/all/;
 use Time::HiRes qw/gettimeofday tv_interval/;
 use Array::Heap::PriorityQueue::Numeric;
@@ -39,11 +39,13 @@ for my $x ( 0 .. $x_t ) {
         $risk += calculate_type( $x, $y )->{type};
     }
 }
-if ( $testing ) {
-    is($risk, 114, "Part 1: $risk")
-    # nop
-} else {
-    is( $risk, 10115, "Part 1: $risk")
+if ($testing) {
+    is( $risk, 114, "Part 1: $risk" )
+
+        # nop
+}
+else {
+    is( $risk, 10115, "Part 1: $risk" );
 }
 
 # find the fastest path using Djikstra's
@@ -64,8 +66,9 @@ my %allowed_states = (
     2 => { 0 => 1, 1 => 1 }
 );
 
-my $root = '0,0,1';    # start with torch
+my $root   = '0,0,1';    # start with torch
 my $bignum = 999999;
+
 # search outside thebox above my ( $x_limit, $y_limit );
 
 my $x_limit = 3 * $x_t;
@@ -83,7 +86,6 @@ for ( my $x = 0; $x <= $x_limit; $x++ ) {
 
 my %dist;
 my %edge;
-my %prev;
 say "==> calculating vertices...";
 
 # calculate vertices
@@ -96,7 +98,7 @@ for ( my $x = 0; $x <= $x_limit; $x++ ) {
 
         # cost for switching tools
         $edge{ join( ',', $x, $y, $tools[0] ) }
-           ->{ join( ',', $x, $y, $tools[1] ) } = 7;
+            ->{ join( ',', $x, $y, $tools[1] ) } = 7;
         $edge{ join( ',', $x, $y, $tools[1] ) }
             ->{ join( ',', $x, $y, $tools[0] ) } = 7;
 
@@ -115,7 +117,7 @@ for ( my $x = 0; $x <= $x_limit; $x++ ) {
             foreach my $tool (@tools) {
                 $edge{ join( ',', $x, $y, $tool ) }
                     ->{ join( ',', $x2, $y2, $tool ) } = 1
-                    if exists $allowed_states{$type2}->{$tool};
+                    if exists $allowed_states{$type2}{$tool};
             }
 
         }
@@ -124,9 +126,8 @@ for ( my $x = 0; $x <= $x_limit; $x++ ) {
 my $pq = Array::Heap::PriorityQueue::Numeric->new();
 say "==> setting up queue...";
 foreach my $n (@node) {
-        $dist{$n} = $bignum;
-        $pq->add_unordered( $n, $bignum );
-        $prev{$n} = $n;
+    $dist{$n} = $bignum;
+    $pq->add_unordered( $n, $bignum );
 }
 $pq->restore_order();
 $dist{$root} = 0;
@@ -134,15 +135,14 @@ $dist{$root} = 0;
 say "==> starting loop...";
 LOOP:
 while ( $pq->peek ) {
-        my $n = $pq->get();
+    my $n = $pq->get();
+    my ( $x, $y, $t ) = split( /,/, $n );
+    my $manhattan = abs( $x_t - $x ) + abs( $y_t - $y );
+    foreach my $n2 ( keys %{ $edge{$n} } ) {
+        if ( $dist{$n2} > ( $dist{$n} + $edge{$n}{$n2} ) ) {
 
-        #    push @solved, $n;
-        foreach my $n2 ( keys %{ $edge{$n} } ) {
-            if ( $dist{$n2} > ( $dist{$n} + $edge{$n}->{$n2} )) {
-
-		$dist{$n2} = $dist{$n} + $edge{$n}->{$n2};
-		$prev{$n2} = $n;
-		$pq->add( $n2, $dist{$n} + $edge{$n}->{$n2} );
+            $dist{$n2} = $dist{$n} + $edge{$n}{$n2};
+            $pq->add( $n2, $dist{$n} + $edge{$n}{$n2} + $manhattan );
         }
     }
 }
@@ -156,22 +156,27 @@ else {
     is( $part2, 990, "Part 2: $part2" );
 }
 
-say sec_to_hms(tv_interval($start_time));
+say sec_to_hms( tv_interval($start_time) );
 
 #### SUBS ####
 sub sec_to_hms {
-    my ( $s ) = @_;
-    return sprintf("Duration: %02dh%02dm%02ds (%.3f ms)",
-	   int($s/(60*60)), ($s/60)%60, $s%60, $s*1000)
+    my ($s) = @_;
+    return sprintf(
+        "Duration: %02dh%02dm%02ds (%.3f ms)",
+        int( $s / ( 60 * 60 ) ),
+        ( $s / 60 ) % 60,
+        $s % 60, $s * 1000
+    );
 }
+
 sub calculate_type {
     my ( $x, $y ) = @_;
 
     # recursive with memoization
-    if ( defined $Map->[$x]->[$y] ) {
+    if ( defined $Map->[$x][$y] ) {
         return {
-            type  => $Map->[$x]->[$y]->{type},
-            level => $Map->[$x]->[$y]->{level}
+            type  => $Map->[$x][$y]{type},
+            level => $Map->[$x][$y]{level}
         };
     }
     my ( $geo_index, $level, $type );
@@ -188,14 +193,13 @@ sub calculate_type {
         $geo_index = $x * 16807;
     }
     else {
-        $geo_index =
-          calculate_type( $x - 1, $y )->{level} *
-          calculate_type( $x,     $y - 1 )->{level};
+        $geo_index = calculate_type( $x - 1, $y )->{level}
+            * calculate_type( $x, $y - 1 )->{level};
     }
     die "how did we get here?!" unless defined $geo_index;
     $level = ( $geo_index + $depth ) % 20183;
     $type  = $level % 3;
-    $Map->[$x]->[$y] = { type => $type, level => $level };
+    $Map->[$x][$y] = { type => $type, level => $level };
     return { type => $type, level => $level };
 }
 
